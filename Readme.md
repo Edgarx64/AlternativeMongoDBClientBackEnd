@@ -30,7 +30,40 @@ and Install [follow the link](https://maven.apache.org/install.html)
  sudo start service mongod
  ```
  For macOS at the system prompt `mongod`, Windows - `mongod.exe`
+
+## Mongo database for example
+
+ Run the following code in the mongo command prompt
  
+```
+db.mycol.insert([
+{
+   a: 'text', 
+   b: 10,
+   c: ['one', 'two', 'three'],
+   d: {da: 4, db: "14"}
+},
+{
+   a: 'abc', 
+   b: 20,
+   c: ['one', 'two', 'three', 'four'],
+   d: {da: 2, db: "22"}
+},
+{
+   a: 'zxc', 
+   b: 5,
+   c: ['one', 'two', 'three', 'four', 'five'],
+   d: {da: 1, db: "41"}
+},
+{
+   a: 'asd', 
+   b: 30,
+   c: ['one', 'two'],
+   d: {da: 3, db: "34"}
+}
+])
+```
+
 ## Run application
  ```
  gradle bootRun
