@@ -7,6 +7,7 @@ import com.core.SortBy;
 import com.enums.DirectSort;
 import com.enums.Inequality;
 import com.enums.LogicalConnective;
+import com.exception.ParsingRuntimeException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -87,6 +88,11 @@ public class ParsingServiceTest {
         assertEqualsCondition(expected, actual);
     }
 
+    @Test(expected = ParsingRuntimeException.class)
+    public void parseConditionException() throws Exception {
+        parsingService.parseCondition("a ^ b");
+    }
+
     private void assertEqualsCondition(Condition expected, Condition actual) {
         assertEquals(expected.getField(), actual.getField());
         assertEquals(expected.getInequality(), actual.getInequality());
@@ -106,13 +112,7 @@ public class ParsingServiceTest {
         String query = "SELECT title, description, likes FROM post WHERE likes > 10 GROUP BY a ORDER BY a ASC SKIP 2 LIMIT 5";
         QuerySQLBean actual = parsingService.parseQuerySQL(query);
 
-        assertEquals(expected.getSelect(), actual.getSelect());
-        assertEquals(expected.getFrom(), actual.getFrom());
-        assertEquals(expected.getWhere(), actual.getWhere());
-        assertEquals(expected.getGroupBy(), actual.getGroupBy());
-        assertEquals(expected.getOrderBy(), actual.getOrderBy());
-        assertEquals(expected.getSkip(), actual.getSkip());
-        assertEquals(expected.getLimit(), actual.getLimit());
+        assertEqualsQuerySQLBean(expected, actual);
     }
 
     @Test
@@ -127,13 +127,7 @@ public class ParsingServiceTest {
         String query = "SELECT title, description, likes FROM post WHERE likes > 10 GROUP BY a ORDER BY a ASC SKIP 2";
         QuerySQLBean actual = parsingService.parseQuerySQL(query);
 
-        assertEquals(expected.getSelect(), actual.getSelect());
-        assertEquals(expected.getFrom(), actual.getFrom());
-        assertEquals(expected.getWhere(), actual.getWhere());
-        assertEquals(expected.getGroupBy(), actual.getGroupBy());
-        assertEquals(expected.getOrderBy(), actual.getOrderBy());
-        assertEquals(expected.getSkip(), actual.getSkip());
-        assertEquals(expected.getLimit(), actual.getLimit());
+        assertEqualsQuerySQLBean(expected, actual);
     }
 
     @Test
@@ -147,13 +141,7 @@ public class ParsingServiceTest {
         String query = "SELECT title, description, likes FROM post WHERE likes > 10 ORDER BY a ASC SKIP 2";
         QuerySQLBean actual = parsingService.parseQuerySQL(query);
 
-        assertEquals(expected.getSelect(), actual.getSelect());
-        assertEquals(expected.getFrom(), actual.getFrom());
-        assertEquals(expected.getWhere(), actual.getWhere());
-        assertEquals(expected.getGroupBy(), actual.getGroupBy());
-        assertEquals(expected.getOrderBy(), actual.getOrderBy());
-        assertEquals(expected.getSkip(), actual.getSkip());
-        assertEquals(expected.getLimit(), actual.getLimit());
+        assertEqualsQuerySQLBean(expected, actual);
     }
 
     @Test
@@ -166,13 +154,7 @@ public class ParsingServiceTest {
         String query = "SELECT title, description, likes FROM post WHERE likes > 10 SKIP 2";
         QuerySQLBean actual = parsingService.parseQuerySQL(query);
 
-        assertEquals(expected.getSelect(), actual.getSelect());
-        assertEquals(expected.getFrom(), actual.getFrom());
-        assertEquals(expected.getWhere(), actual.getWhere());
-        assertEquals(expected.getGroupBy(), actual.getGroupBy());
-        assertEquals(expected.getOrderBy(), actual.getOrderBy());
-        assertEquals(expected.getSkip(), actual.getSkip());
-        assertEquals(expected.getLimit(), actual.getLimit());
+        assertEqualsQuerySQLBean(expected, actual);
     }
 
     @Test
@@ -184,13 +166,7 @@ public class ParsingServiceTest {
         String query = "SELECT title, description, likes FROM post WHERE likes > 10";
         QuerySQLBean actual = parsingService.parseQuerySQL(query);
 
-        assertEquals(expected.getSelect(), actual.getSelect());
-        assertEquals(expected.getFrom(), actual.getFrom());
-        assertEquals(expected.getWhere(), actual.getWhere());
-        assertEquals(expected.getGroupBy(), actual.getGroupBy());
-        assertEquals(expected.getOrderBy(), actual.getOrderBy());
-        assertEquals(expected.getSkip(), actual.getSkip());
-        assertEquals(expected.getLimit(), actual.getLimit());
+        assertEqualsQuerySQLBean(expected, actual);
     }
 
     @Test
@@ -201,6 +177,10 @@ public class ParsingServiceTest {
         String query = "SELECT title, description, likes FROM post";
         QuerySQLBean actual = parsingService.parseQuerySQL(query);
 
+        assertEqualsQuerySQLBean(expected, actual);
+    }
+
+    private void assertEqualsQuerySQLBean(QuerySQLBean expected, QuerySQLBean actual) {
         assertEquals(expected.getSelect(), actual.getSelect());
         assertEquals(expected.getFrom(), actual.getFrom());
         assertEquals(expected.getWhere(), actual.getWhere());
@@ -208,6 +188,12 @@ public class ParsingServiceTest {
         assertEquals(expected.getOrderBy(), actual.getOrderBy());
         assertEquals(expected.getSkip(), actual.getSkip());
         assertEquals(expected.getLimit(), actual.getLimit());
+    }
+
+    @Test(expected = ParsingRuntimeException.class)
+    public void parseQuerySQLException() throws Exception {
+        String query = "select * fr om a";
+        QuerySQLBean actual = parsingService.parseQuerySQL(query);
     }
 
     @Test
@@ -246,11 +232,21 @@ public class ParsingServiceTest {
         assertEquals(expected, actual);
     }
 
+    @Test(expected = ParsingRuntimeException.class)
+    public void parseSkipException() throws Exception {
+        parsingService.parseSkip("a");
+    }
+
     @Test
     public void parseLimit() throws Exception {
         Integer expected = 50;
         Integer actual = parsingService.parseLimit(" 50 ");
         assertEquals(expected, actual);
+    }
+
+    @Test(expected = ParsingRuntimeException.class)
+    public void parseLimitException() throws Exception {
+        parsingService.parseLimit("b");
     }
 
 }
