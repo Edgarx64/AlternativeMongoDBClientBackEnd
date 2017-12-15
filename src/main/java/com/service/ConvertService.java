@@ -1,6 +1,5 @@
 package com.service;
 
-import com.bean.QuerySQLBean;
 import com.core.Expression;
 import com.core.SortBy;
 import com.enums.DirectSort;
@@ -8,16 +7,17 @@ import com.enums.LogicalConnective;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,62 +25,7 @@ public class ConvertService {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private MongoCollection<Document> collection = null;
-
-    private MongoConnectionService mongoConnectionService;
-    private ParsingService parsingService;
-
-    @Autowired
-    public ConvertService(MongoConnectionService mongoConnectionService, ParsingService parsingService) {
-        this.mongoConnectionService = mongoConnectionService;
-        this.parsingService = parsingService;
-    }
-
-    public String query(String querySQL) {
-        QuerySQLBean querySQLBean = parsingService.parseQuerySQL(querySQL);
-
-        collection = mongoConnectionService.getCollectionFromDatabase(querySQLBean.getFrom());
-
-        FindIterable<Document> documents = buildQueryToMongoDB(querySQLBean);
-
-        return documentsToString(documents);
-    }
-
-    private FindIterable<Document> buildQueryToMongoDB(QuerySQLBean querySQLBean) {
-        FindIterable<Document> result;
-
-        if (querySQLBean.existWhere()) {
-            LinkedList<Expression> expressions = parsingService.parseExpression(querySQLBean.getWhere());
-            Bson filter = expressionsToBson(expressions);
-            result = collection.find(filter);
-        }
-        else {
-            result = collection.find();
-        }
-
-        List<String> selects = parsingService.parseSelect(querySQLBean.getSelect());
-        result.projection(Projections.include(selects));
-
-        if (querySQLBean.existOrderBy()) {
-            List<SortBy> sortByList = parsingService.parseSort(querySQLBean.getOrderBy());
-            Bson sort = sortByListToBson(sortByList);
-            result.sort(sort);
-        }
-
-        if (querySQLBean.existLimit()) {
-            int limit = parsingService.parseLimit(querySQLBean.getLimit());
-            result.limit(limit);
-        }
-
-        if (querySQLBean.existSkip()) {
-            int skip = parsingService.parseSkip(querySQLBean.getSkip());
-            result.skip(skip);
-        }
-
-        return result;
-    }
-
-    private Bson sortByListToBson(List<SortBy> sortByList) {
+    public Bson sortByListToBson(List<SortBy> sortByList) {
         List<Bson> orderBySorts = sortByList.stream()
                 .map(sortBy -> sortBy.getDirectSort().equals(DirectSort.ASC) ?
                         Sorts.ascending(sortBy.getField()) :
@@ -89,7 +34,7 @@ public class ConvertService {
         return Sorts.orderBy(orderBySorts);
     }
 
-    private String documentsToString(FindIterable<Document> documents) {
+    public String documentsToString(FindIterable<Document> documents) {
         StringBuilder result = new StringBuilder();
         result.append("[");
         for (Document document : documents){
@@ -97,20 +42,19 @@ public class ConvertService {
             result.append(str).append(",");
         }
         result.deleteCharAt(result.length() - 1).append("]");
-        logger.info("Collection count: " + collection.count());
         logger.info("Result query: " + result);
         return result.toString();
     }
 
-    private Bson expressionsToBson(LinkedList<Expression> expressions) {
+    public Bson expressionsToBson(LinkedList<Expression> expressions, MongoCollection<Document> collection) {
         Iterator<Expression> expressionIterator = expressions.iterator();
         if (expressionIterator.hasNext()) {
             Expression expressionLeft = expressionIterator.next();
-            Bson bsonLeft = createInequalityFilter(expressionLeft);
+            Bson bsonLeft = createInequalityFilter(expressionLeft, collection);
             Bson bsonRight = null;
             while (expressionIterator.hasNext()) {
                 Expression expressionRight = expressionIterator.next();
-                bsonRight = createInequalityFilter(expressionRight);
+                bsonRight = createInequalityFilter(expressionRight, collection);
                 bsonLeft = createLogicalConnectiveFilter(expressionLeft.getLogicalConnective(), bsonLeft, bsonRight);
                 expressionLeft = expressionRight;
             }
@@ -133,27 +77,28 @@ public class ConvertService {
         }
     }
 
-    private Bson createInequalityFilter(Expression expression) {
+    private Bson createInequalityFilter(Expression expression, MongoCollection<Document> collection) {
         String field = expression.getCondition().getField();
         String value = expression.getCondition().getValue();
+        Object forType = collection.find().first().get(field);
         switch (expression.getCondition().getInequality()) {
             case EQUALITY: {
-                return Filters.eq(field, convertToMongoType(field, value));
+                return Filters.eq(field, convertToMongoType(value, forType));
             }
             case NOT_EQUALS: {
-                return Filters.ne(field, convertToMongoType(field, value));
+                return Filters.ne(field, convertToMongoType(value, forType));
             }
             case LESS_THAN: {
-                return Filters.lt(field, convertToMongoType(field, value));
+                return Filters.lt(field, convertToMongoType(value, forType));
             }
             case LESS_THAN_EQUALS: {
-                return Filters.lte(field, convertToMongoType(field, value));
+                return Filters.lte(field, convertToMongoType(value, forType));
             }
             case GREATER_THAN: {
-                return Filters.gt(field, convertToMongoType(field, value));
+                return Filters.gt(field, convertToMongoType(value, forType));
             }
             case GREATER_THAN_EQUALS: {
-                return Filters.gte(field, convertToMongoType(field, value));
+                return Filters.gte(field, convertToMongoType(value, forType));
             }
             default: {
                 throw new IllegalArgumentException("Error createInequalityFilter");
@@ -161,18 +106,17 @@ public class ConvertService {
         }
     }
 
-    private Object convertToMongoType(String field, String value) {
-        Object o = collection.find().first().get(field);
-        if (o instanceof Double) {
+    public Object convertToMongoType(String value, Object forType) {
+        if (forType instanceof Double) {
             return Double.parseDouble(value);
         }
-        else if (o instanceof Integer) {
-            return Integer.parseInt(field);
+        else if (forType instanceof Integer) {
+            return Integer.parseInt(value);
         }
-        else if (o instanceof String) {
+        else if (forType instanceof String) {
             return value;
         }
-        else if (o instanceof ArrayList) {
+        else if (forType instanceof List) {
             return Arrays.stream(value.split(","))
                     .map(String::trim)
                     .collect(Collectors.toList());

@@ -9,11 +9,12 @@ import com.enums.Inequality;
 import com.enums.LogicalConnective;
 import com.enums.SQLKeyword;
 import com.exception.ParsingRuntimeException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;

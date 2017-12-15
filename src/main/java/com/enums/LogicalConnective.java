@@ -16,12 +16,13 @@ public enum LogicalConnective {
     }
 
     public static LogicalConnective parse(String s) {
+        String toUpperCase = s.toUpperCase();
         for (LogicalConnective lc : LogicalConnective.values()) {
-            if (lc.logicalStandard.equals(s)) {
+            if (lc.logicalStandard.equals(toUpperCase)) {
                 return lc;
             }
         }
-        throw new ParseEnumRuntimeException("Logical connective could not parsing " + s);
+        throw new ParseEnumRuntimeException("Logical connective could not parsing " + toUpperCase);
     }
 
     public String getSymbolMongo() {
